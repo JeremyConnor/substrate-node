@@ -21,11 +21,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_module, decl_storage, ensure, Parameter};
+use frame_support::{decl_error, decl_module, decl_storage, ensure, Parameter, traits::Randomness};
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Member, One, Zero},
 	DispatchError, DispatchResult, RuntimeDebug,
 };
+use parity_scale_codec::Encode;
+use sp_core::H256;
 use sp_std::vec::Vec;
 
 mod mock;
@@ -107,6 +109,8 @@ decl_storage! {
 		pub Tokens get(fn tokens): double_map hasher(twox_64_concat) T::ClassId, hasher(twox_64_concat) T::TokenId => Option<TokenInfoOf<T>>;
 		/// Token existence check by owner and class ID.
 		pub TokensByOwner get(fn tokens_by_owner): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) (T::ClassId, T::TokenId) => Option<()>;
+		/// A nonce to use as a subject when drawing randomness
+		Nonce get(fn nonce): u32;
 	}
 }
 
@@ -218,4 +222,41 @@ impl<T: Trait> Module<T> {
 			Ok(())
 		})
 	}
+
+	/// Reads the nonce from storage, increments the stored nonce, and returns
+	/// the encoded nonce to the caller.
+	fn encode_and_update_nonce() -> Vec<u8> {
+		let nonce = Nonce::get();
+		Nonce::put(nonce.wrapping_add(1));
+		nonce.encode()
+	}
+
+	/// Assign NFTs to users based on their position in top-listeners' list and randomness
+    pub fn assign_nft(user: &T::AccountId, class_id: T::ClassId, dec: u32) {
+        // Generate random number
+
+		// Using a subject is recommended to prevent accidental re-use of the seed
+		// (This does not add security or entropy)
+		let subject = Self::encode_and_update_nonce();
+
+		let random_seed = T::RandomnessSource::random_seed();
+		let random_result = T::RandomnessSource::random(&subject);
+
+		let random_number: u32;
+        let metadata: Vec<u8>;
+        let data: T::TokenData;
+        random_number %= 1000;
+        random_number -= dec;
+
+        if random_number <= 50 {
+            mint(user, class_id, metadata, data);
+        }
+        else if random_number <= 250 {
+            mint(user, class_id, metadata, data);
+        }
+        else if random_number <= 999 {
+            mint(user, class_id, metadata, data);
+        }
+    }
+
 }
