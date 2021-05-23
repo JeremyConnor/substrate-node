@@ -66,6 +66,8 @@ pub trait Trait: frame_system::Trait {
 	type ClassData: Parameter + Member;
 	/// The token properties type
 	type TokenData: Parameter + Member;
+	/// Creating Randomness
+	type RandomnessSource: Randomness<H256>;
 }
 
 decl_error! {
@@ -249,13 +251,13 @@ impl<T: Trait> Module<T> {
         random_number -= dec;
 
         if random_number <= 50 {
-            mint(user, class_id, metadata, data);
+            Self::mint(user, class_id, metadata, data);
         }
         else if random_number <= 250 {
-            mint(user, class_id, metadata, data);
+            Self::mint(user, class_id, metadata, data);
         }
         else if random_number <= 999 {
-            mint(user, class_id, metadata, data);
+            Self::mint(user, class_id, metadata, data);
         }
     }
 
