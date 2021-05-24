@@ -26,7 +26,6 @@ use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Member, One, Zero},
 	DispatchError, DispatchResult, RuntimeDebug,
 };
-use parity_scale_codec::Encode;
 use sp_core::H256;
 use sp_std::vec::Vec;
 
