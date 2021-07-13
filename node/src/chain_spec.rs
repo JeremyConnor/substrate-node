@@ -1,12 +1,14 @@
 use sp_core::{Pair, Public, sr25519};
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, SystemConfig, WASM_BINARY, Signature, TokensConfig, CurrencyId,
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};
 use sc_service::ChainType;
+use node_template_runtime::ContractsConfig;
+use serde_json::map::Map;
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -39,7 +41,12 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 }
 
 pub fn development_config() -> Result<ChainSpec, String> {
-	let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+
+	let mut properties = Map::new();
+	properties.insert("tokenSymbol".into(), "UDO".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
 		// Name
@@ -71,14 +78,14 @@ pub fn development_config() -> Result<ChainSpec, String> {
 		// Protocol ID
 		None,
 		// Properties
-		None,
+		Some(properties),
 		// Extensions
 		None,
 	))
 }
 
 pub fn local_testnet_config() -> Result<ChainSpec, String> {
-	let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
 		// Name
@@ -134,24 +141,39 @@ fn testnet_genesis(
 	_enable_println: bool,
 ) -> GenesisConfig {
 	GenesisConfig {
-		frame_system: Some(SystemConfig {
+		frame_system: SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
-		}),
-		pallet_balances: Some(BalancesConfig {
+		},
+		pallet_balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
-		}),
-		pallet_aura: Some(AuraConfig {
+		},
+		pallet_aura: AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
-		}),
-		pallet_grandpa: Some(GrandpaConfig {
+		},
+		pallet_grandpa: GrandpaConfig {
 			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
-		}),
-		pallet_sudo: Some(SudoConfig {
+		},
+		pallet_sudo: SudoConfig {
 			// Assign network admin rights.
 			key: root_key,
+		},
+		pallet_contracts: ContractsConfig {
+            // println should only be enabled on development chains
+            current_schedule: pallet_contracts::Schedule::default()
+                .enable_println(_enable_println),
+        },
+		orml_tokens: Some(TokensConfig {
+			endowed_accounts: endowed_accounts
+			.iter()
+			.flat_map(|x| {
+				vec![
+					(x.clone(), CurrencyId::UDO, 10u128.pow(18)),
+				]
+			})
+			.collect(),
 		}),
 	}
 }
